@@ -43,7 +43,10 @@ class API:
         for attempt in range(3 if method == 'GET' else 1):
             try:
                 with self.opener.open(req, timeout=30) as response:
+                    status = response.status
                     raw = response.read(8 * 1024 * 1024 + 1)
+                if status == 204 or (not raw and method in ('POST', 'PATCH', 'DELETE')):
+                    return None
                 if len(raw) > 8 * 1024 * 1024:
                     raise APIError('Ответ панели слишком большой.')
                 data = json.loads(raw)

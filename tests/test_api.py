@@ -62,7 +62,9 @@ class Handler(BaseHTTPRequestHandler):
             if data.get('forceRestart') is not True:
                 return self.respond(400, {'message': 'forceRestart is required'})
             self.records[self.path] = data
-            return self.respond(200, {'response': True})
+            self.send_response(204)
+            self.end_headers()
+            return
         data['uuid'] = str(len(self.calls))
         if self.path == '/api/config-profiles':
             data['inbounds'] = [{'uuid': 'inbound-1', 'tag': 'G0D0V_VLESS_REALITY'}]
@@ -105,7 +107,7 @@ class APITests(unittest.TestCase):
         self.assertEqual(Handler.headers_seen[-1], ('/api/nodes', None))
 
     def test_restart_uses_the_required_remnawave_34_body(self):
-        self.assertTrue(self.api.restart_node('node-id'))
+        self.assertIsNone(self.api.restart_node('node-id'))
         self.assertEqual(Handler.records['/api/nodes/node-id/actions/restart'], {'forceRestart': True})
 
     def test_readiness_uses_current_node_schema(self):
