@@ -1,0 +1,40 @@
+name: Installer checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        python: ['3.10', '3.12', '3.14']
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install shell test tools
+        run: sudo apt-get update && sudo apt-get install -y shellcheck bats
+      - name: Check Bash
+        run: bash -n install.sh && shellcheck install.sh && bats tests/bootstrap.bats
+      - name: Unit and integration tests
+        run: python -m unittest discover -s tests -v
+      - name: Check Python syntax
+        run: python -m compileall -q godov manage.py scripts
+      - name: Package installation runtime
+        run: python scripts/package.py
+
+  containers:
+    needs: quality
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install real stack and test VLESS traffic, resume and restore
+        run: sudo --preserve-env=GITHUB_ACTIONS python3 scripts/linux_smoke.py

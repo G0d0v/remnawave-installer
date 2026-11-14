@@ -49,10 +49,12 @@ class API:
                 return data['response']
             except urllib.error.HTTPError as exc:
                 # Deliberately omit server-controlled bodies, which may echo secrets.
-                if method == 'GET' and exc.code in (502, 503, 504) and attempt < 2:
+                status = exc.code
+                exc.close()
+                if method == 'GET' and status in (502, 503, 504) and attempt < 2:
                     time.sleep(attempt + 1)
                     continue
-                raise APIError(f'Remnawave: HTTP {exc.code}, {method} {path}. Проверьте доступ и права токена.', exc.code) from None
+                raise APIError(f'Remnawave: HTTP {status}, {method} {path}. Проверьте доступ и права токена.', status) from None
             except (urllib.error.URLError, TimeoutError, OSError):
                 if method == 'GET' and attempt < 2:
                     time.sleep(attempt + 1)

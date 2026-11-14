@@ -109,7 +109,7 @@ def xray_profile(c: Config) -> dict:
     return {
         'log': {'loglevel': 'warning'},
         'inbounds': [{'tag': 'G0D0V_VLESS_REALITY', 'listen': '0.0.0.0', 'port': c.vpn_port, 'protocol': 'vless',
-                      'settings': {'clients': [], 'decryption': 'none'},
+                      'settings': {'clients': [], 'decryption': 'none', 'flow': 'xtls-rprx-vision'},
                       'sniffing': {'enabled': True, 'destOverride': ['http', 'tls', 'quic'], 'routeOnly': True},
                       'streamSettings': {'network': 'tcp', 'security': 'reality', 'realitySettings': reality}}],
         'outbounds': [{'tag': 'DIRECT', 'protocol': 'freedom'}, {'tag': 'BLOCK', 'protocol': 'blackhole'}],

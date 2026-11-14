@@ -6,6 +6,7 @@ import os
 import re
 import secrets
 import tempfile
+import uuid
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -129,6 +130,19 @@ class Config:
     def validate(self):
         if self.mode not in MODES or not re.fullmatch(r'[a-f0-9]{12}', self.install_id):
             raise ValueError('Некорректный режим или ID установки.')
+        if any(type(flag) is not bool for flag in (self.selfsteal, self.block_torrent, self.completed)):
+            raise ValueError('Флаги конфигурации должны быть boolean.')
+        if len(self.admin_password) < 24 or not re.fullmatch(r'[A-Za-z0-9_-]{3,32}', self.admin_username):
+            raise ValueError('Некорректный логин или слишком короткий пароль администратора.')
+        for value in (self.db_password, self.app_secret, self.metrics_password, self.webhook_secret):
+            if not re.fullmatch(r'[a-f0-9]{32,128}', value):
+                raise ValueError('Внутренние секреты должны содержать только hex-символы.')
+        if self.node_secret and not re.fullmatch(r'[A-Za-z0-9+/=_-]{16,}', self.node_secret):
+            raise ValueError('SECRET_KEY должен быть однострочным ключом, скопированным из панели.')
+        for key, value in self.resources.items():
+            if key not in ('profile', 'inbound', 'node', 'host', 'squad'):
+                raise ValueError('Неизвестный объект в состоянии установки.')
+            uuid.UUID(value)
         if self.has_panel:
             self.panel_domain = domain(self.panel_domain)
             self.sub_domain = domain(self.sub_domain)
@@ -165,7 +179,7 @@ class Config:
         image(self.node_image, 'remnawave/node')
         image(self.caddy_image, 'caddy')
         for secret in (self.db_password, self.app_secret, self.metrics_password, self.webhook_secret,
-                       self.node_secret, self.api_token, self.bot_token):
+                       self.node_secret, self.api_token, self.bot_token, self.admin_password):
             if any(ch in secret for ch in '\r\n\x00'):
                 raise ValueError('Секреты не должны содержать перевод строки или NUL.')
         for network in self.firewall_networks:
@@ -177,6 +191,8 @@ def save(root: Path, config: Config):
     if root.is_symlink():
         raise ValueError('Каталог установки не должен быть symlink.')
     marker = root / MARKER
+    if marker.is_symlink():
+        raise ValueError('Маркер владения не должен быть symlink.')
     if root.exists() and any(root.iterdir()) and not marker.is_file():
         raise ValueError('Каталог не принадлежит G0d0v. Выберите пустой каталог.')
     if marker.exists() and marker.read_text().strip() != config.install_id:
@@ -188,7 +204,7 @@ def save(root: Path, config: Config):
 
 
 def load(root: Path) -> Config:
-    if root.is_symlink() or not (root / MARKER).is_file():
+    if root.is_symlink() or (root / MARKER).is_symlink() or (root / 'state.json').is_symlink() or not (root / MARKER).is_file():
         raise ValueError('Установка G0d0v в этом каталоге не найдена.')
     config = Config(**json.loads((root / 'state.json').read_text(encoding='utf-8')))
     if (root / MARKER).read_text().strip() != config.install_id:
