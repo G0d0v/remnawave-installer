@@ -41,6 +41,11 @@ def compose(c: Config) -> dict:
     if c.has_node:
         services['node'] = {'image': c.node_image, 'restart': 'unless-stopped', 'network_mode': 'host',
                             'env_file': ['node.env'],
+                            'healthcheck': {'test': ['CMD', 'node', '-e',
+                                f"const s=require('net').connect({c.node_port},'127.0.0.1');"
+                                "s.once('connect',()=>{s.end();process.exit(0)});"
+                                "s.once('error',()=>process.exit(1));setTimeout(()=>process.exit(1),2000)"],
+                                'interval': '5s', 'timeout': '3s', 'retries': 30, 'start_period': '10s'},
                             'ulimits': {'nofile': {'soft': 1048576, 'hard': 1048576}}}
     if c.has_caddy:
         services['caddy'] = {

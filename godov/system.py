@@ -12,7 +12,7 @@ import time
 import urllib.request
 from pathlib import Path
 
-from .api import API, APIError, bootstrap_panel, provision
+from .api import API, bootstrap_panel, node_ready, provision
 from .config import Config, load, save, write_private
 from .render import render
 
@@ -185,7 +185,7 @@ class Stack:
         progress('Запускаю все сервисы…')
         self.compose('up', '-d', '--wait', '--wait-timeout', '300', timeout=360)
         if c.has_node and c.mode != 'node':
-            self.api(c).post(f'/api/nodes/{c.resources["node"]}/actions/restart', {})
+            self.api(c).restart_node(c.resources['node'])
             progress('Проверяю связь панели с нодой…')
             self.wait_node(c)
         c.completed = True
@@ -199,7 +199,7 @@ class Stack:
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             node = self.api(c).get(f'/api/nodes/{c.resources["node"]}')
-            if node.get('isConnected') and node.get('isXrayRunning'):
+            if node_ready(node):
                 return
             time.sleep(3)
         raise RuntimeError('Нода не подтвердила запуск Xray. Проверьте IP панели, firewall и godov-remna logs node; затем resume.')

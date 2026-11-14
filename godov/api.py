@@ -75,6 +75,13 @@ class API:
     def patch(self, path, payload):
         return self.request('PATCH', path, payload)
 
+    def restart_node(self, node_uuid):
+        return self.post(f'/api/nodes/{node_uuid}/actions/restart', {'forceRestart': True})
+
+
+def node_ready(node):
+    return bool(node.get('isConnected') and node.get('xrayUptime', 0) > 0)
+
 
 def scoped_token(api: API, name: str, resources: set) -> str:
     catalog = api.get('/api/tokens/scopes')

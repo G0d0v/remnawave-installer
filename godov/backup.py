@@ -156,7 +156,7 @@ def apply_snapshot(stack: Stack, staging: Path, c: Config):
         protect_node(c)
     stack.compose('up', '-d', '--wait', '--wait-timeout', '300', timeout=360)
     if c.has_node and c.mode != 'node':
-        stack.api(c).post(f'/api/nodes/{c.resources["node"]}/actions/restart', {})
+        stack.api(c).restart_node(c.resources['node'])
         stack.wait_node(c)
     stack.credentials(c)
 

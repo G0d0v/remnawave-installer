@@ -3,7 +3,7 @@ import threading
 import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from godov.api import API, APIError, bootstrap_panel, provision
+from godov.api import API, APIError, bootstrap_panel, node_ready, provision
 from godov.config import Config
 
 
@@ -58,6 +58,11 @@ class Handler(BaseHTTPRequestHandler):
             return self.respond(201, {'response': {'accessToken': 'admin-jwt'}})
         if self.path == '/api/tokens':
             return self.respond(201, {'response': {'token': data['name'] + '-issued-token'}})
+        if self.path.endswith('/actions/restart'):
+            if data.get('forceRestart') is not True:
+                return self.respond(400, {'message': 'forceRestart is required'})
+            self.records[self.path] = data
+            return self.respond(200, {'response': True})
         data['uuid'] = str(len(self.calls))
         if self.path == '/api/config-profiles':
             data['inbounds'] = [{'uuid': 'inbound-1', 'tag': 'G0D0V_VLESS_REALITY'}]
@@ -98,6 +103,15 @@ class APITests(unittest.TestCase):
         scope_headers = [value for path, value in Handler.headers_seen if path == '/api/tokens/scopes']
         self.assertEqual(scope_headers, ['browser', 'browser'])
         self.assertEqual(Handler.headers_seen[-1], ('/api/nodes', None))
+
+    def test_restart_uses_the_required_remnawave_34_body(self):
+        self.assertTrue(self.api.restart_node('node-id'))
+        self.assertEqual(Handler.records['/api/nodes/node-id/actions/restart'], {'forceRestart': True})
+
+    def test_readiness_uses_current_node_schema(self):
+        self.assertTrue(node_ready({'isConnected': True, 'xrayUptime': 10}))
+        self.assertFalse(node_ready({'isConnected': True, 'xrayUptime': 0}))
+        self.assertFalse(node_ready({'isConnected': False, 'xrayUptime': 10}))
 
     def test_never_follows_redirects_with_a_bearer_token(self):
         with self.assertRaises(APIError) as error:

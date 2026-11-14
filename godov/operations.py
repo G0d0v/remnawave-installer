@@ -9,7 +9,7 @@ import socket
 import ssl
 from pathlib import Path
 
-from .api import update_profile
+from .api import node_ready, update_profile
 from .backup import apply_snapshot, backup_stack, unpack, validate_snapshot
 from .config import load, save, write_private
 from .render import render
@@ -39,7 +39,7 @@ def update_stack(stack: Stack, *, panel_version=None, node_version=None, caddy_v
         stack.compose('pull', timeout=1200)
         stack.compose('up', '-d', '--wait', '--wait-timeout', '300', timeout=360)
         if c.has_node and c.mode != 'node':
-            stack.api(c).post(f'/api/nodes/{c.resources["node"]}/actions/restart', {})
+            stack.api(c).restart_node(c.resources['node'])
             stack.wait_node(c)
         save(stack.root, c)
     except Exception:
@@ -67,7 +67,7 @@ def reconfigure(stack: Stack, c):
             update_profile(stack.api(old), c)
         stack.compose('up', '-d', '--force-recreate', '--wait', '--wait-timeout', '300', timeout=360)
         if c.has_node and c.mode != 'node':
-            stack.api(c).post(f'/api/nodes/{c.resources["node"]}/actions/restart', {})
+            stack.api(c).restart_node(c.resources['node'])
             stack.wait_node(c)
         save(stack.root, c)
         stack.credentials(c)
@@ -108,7 +108,7 @@ def diagnostics(stack: Stack):
     if c.api_token and c.resources.get('node'):
         try:
             node = stack.api(c).get('/api/nodes/' + c.resources['node'])
-            ready = bool(node.get('isConnected') and node.get('isXrayRunning'))
+            ready = node_ready(node)
             results.append(('Связь панели с нодой', ready, 'Xray запущен' if ready else 'Xray не подтверждён'))
         except RuntimeError as error:
             results.append(('Remnawave API', False, str(error)))
