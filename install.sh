@@ -30,8 +30,8 @@ case "$(uname -m)" in x86_64|aarch64|arm64) ;; *) fail 'Supported architecture: 
 
 if [[ "${1:-}" == '--check' ]]; then
     printf 'OS: %s %s\nArchitecture: %s\n' "$ID" "$VERSION_ID" "$(uname -m)"
-    command -v python3 >/dev/null && python3 --version || true
-    command -v docker >/dev/null && docker compose version || true
+    if command -v python3 >/dev/null; then python3 --version; fi
+    if command -v docker >/dev/null; then docker compose version || true; fi
     printf 'Compatibility check complete. No changes made.\n'
     exit 0
 fi
