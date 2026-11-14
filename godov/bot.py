@@ -29,7 +29,7 @@ def configure_database(db_path, payload):
             raise ValueError('Схема ShopBot несовместима. Требуется версия с Remnawave-настройками хоста.')
         existing = con.execute('SELECT remnawave_base_url,squad_uuid FROM xui_hosts WHERE host_name=?',
                                (payload['name'],)).fetchone()
-        if existing and existing != (payload['url'], payload['squad']):
+        if existing and existing[1] != payload['squad']:
             raise ValueError('Хост с таким именем уже имеет другую привязку. Данные не изменены.')
         folder = db_path.parent / 'backups'
         folder.mkdir(exist_ok=True)
@@ -47,8 +47,9 @@ def configure_database(db_path, payload):
                         (payload['name'], payload['url'], payload['url'], payload['token'],
                          payload['squad'], payload.get('subscription')))
         else:
-            con.execute('UPDATE xui_hosts SET remnawave_api_token=?, subscription_url=? WHERE host_name=?',
-                        (payload['token'], payload.get('subscription'), payload['name']))
+            con.execute('''UPDATE xui_hosts SET host_url=?, remnawave_base_url=?, remnawave_api_token=?,
+                           subscription_url=? WHERE host_name=?''',
+                        (payload['url'], payload['url'], payload['token'], payload.get('subscription'), payload['name']))
         con.commit()
     return str(backup)
 

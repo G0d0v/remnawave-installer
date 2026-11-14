@@ -51,8 +51,17 @@ class BotTests(unittest.TestCase):
     def test_refuses_collision_with_existing_host(self):
         configure_database(self.db, self.payload)
         self.payload['url'] = 'https://different.example.com'
+        self.payload['squad'] = 'different-squad'
         with self.assertRaises(ValueError):
             configure_database(self.db, self.payload)
+
+    def test_rebind_after_panel_domain_change_keeps_the_same_squad(self):
+        configure_database(self.db, self.payload)
+        self.payload['url'] = 'https://new-panel.example.com'
+        configure_database(self.db, self.payload)
+        with closing(sqlite3.connect(self.db)) as con:
+            self.assertEqual(con.execute('SELECT host_url,remnawave_base_url,squad_uuid FROM xui_hosts').fetchone(),
+                             ('https://new-panel.example.com', 'https://new-panel.example.com', 'squad-uuid'))
 
 
 if __name__ == '__main__':
