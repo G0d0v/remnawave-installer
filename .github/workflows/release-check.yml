@@ -1,0 +1,24 @@
+name: Published installer check
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  published-bootstrap:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      GODOV_RELEASE_TAG: ${{ github.event.release.tag_name || 'v1.0.0' }}
+    steps:
+      - name: Download the published bootstrap and install its verified runtime
+        shell: bash
+        run: |
+          [[ "$GODOV_RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          curl -fsSL "https://raw.githubusercontent.com/G0d0v/remnawave-installer/$GODOV_RELEASE_TAG/install.sh" -o "$RUNNER_TEMP/godov-install.sh"
+          sudo bash "$RUNNER_TEMP/godov-install.sh" --preview menu
+          sudo /usr/local/bin/godov-remna --version
