@@ -139,6 +139,8 @@ class Config:
                 raise ValueError('Внутренние секреты должны содержать только hex-символы.')
         if self.node_secret and not re.fullmatch(r'[A-Za-z0-9+/=_-]{16,}', self.node_secret):
             raise ValueError('SECRET_KEY должен быть однострочным ключом, скопированным из панели.')
+        if not re.fullmatch(r'[0-9a-f]{16}', self.short_id):
+            raise ValueError('Reality shortId должен содержать 16 hex-символов.')
         for key, value in self.resources.items():
             if key not in ('profile', 'inbound', 'node', 'host', 'squad'):
                 raise ValueError('Неизвестный объект в состоянии установки.')

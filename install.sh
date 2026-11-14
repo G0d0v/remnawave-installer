@@ -96,6 +96,7 @@ with tarfile.open(stage / package, 'r:gz') as archive:
 PY
 
 target="$CLI_ROOT/releases/$VERSION"
+[[ "$(cat "$stage/code/VERSION")" == "$VERSION" ]] || fail 'Archive version does not match the bootstrap.'
 [[ ! -L "$target" ]] || fail 'Release directory must not be a symlink.'
 if [[ ! -e "$target" ]]; then
     mv -- "$stage/code" "$target"

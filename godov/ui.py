@@ -124,8 +124,8 @@ def ask(label, default='', *, secret=False):
     return value.strip() or default
 
 
-def confirm(label):
-    return ask(label + ' (да/нет)', 'нет').lower() in ('да', 'д', 'yes', 'y')
+def confirm(label, *, default=False):
+    return ask(label + ' (да/нет)', 'да' if default else 'нет').lower() in ('да', 'д', 'yes', 'y')
 
 
 def message(text, *, error=False):

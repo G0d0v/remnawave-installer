@@ -11,7 +11,8 @@ from pathlib import Path
 
 from . import VERSION, ui
 from .backup import backup_stack, compose_args, restore_stack
-from .bot import bind_bot
+from .bot import bind_bot, export_connection, read_connection
+from .api import API
 from .config import MODES, Config, load
 from .operations import (backup_and_prune, diagnostics, enable_bbr, reconfigure,
                          schedule_backups, uninstall, update_stack)
@@ -51,6 +52,8 @@ def parser():
     bind = commands.add_parser('bind-bot', help='добавить хост в существующий ShopBot')
     bind.add_argument('--container', default='remnawave-shopbot')
     bind.add_argument('--database', type=Path, help='users.db на этом хосте вместо контейнера')
+    bind.add_argument('--connection', type=Path, help='файл export-bot для бота на другом сервере')
+    commands.add_parser('export-bot', help='сохранить файл подключения для удалённого ShopBot')
     credentials = commands.add_parser('credentials', help='путь к файлу доступов')
     credentials.add_argument('--show-secrets', action='store_true', help='показать пароль и токены в терминале')
     logs = commands.add_parser('logs', help='логи выбранного сервиса')
@@ -102,6 +105,7 @@ def wizard(mode=None):
             c.reality_domain = ui.ask('Внешний TLS 1.3 SNI для Reality', 'www.microsoft.com')
         c.node_address = ui.ask('Публичный IP или DNS ноды для клиентов', c.node_domain)
         c.country = ui.ask('Код страны ноды: DE / NL / FI / ...', 'XX').upper()
+        c.block_torrent = ui.confirm('Блокировать BitTorrent на ноде?', default=True)
         if mode in ('node', 'attach'):
             c.panel_ip = ui.ask('Исходящий IP панели для доступа к API ноды')
             c.node_port = int(ui.ask('Порт API ноды', '2222'))
@@ -161,6 +165,7 @@ def edit_domains(stack, c, *, selfsteal=False):
         if c.node_address == c.node_domain:
             candidate.node_address = candidate.node_domain
         candidate.site_theme = ui.ask('Тема: studio / minimal / status', c.site_theme)
+        candidate.block_torrent = ui.confirm('Блокировать BitTorrent?', default=c.block_torrent)
     elif selfsteal:
         raise ValueError('Для установки без selfsteal сначала создайте новую ноду в режиме selfsteal.')
     candidate.validate()
@@ -174,6 +179,12 @@ def edit_domains(stack, c, *, selfsteal=False):
 
 def execute(args, stack):
     command = args.command
+    if command == 'bind-bot' and args.connection:
+        c = read_connection(args.connection)
+        API(c.panel_url, c.bot_token).get('/api/internal-squads/' + c.resources['squad'])
+        backup = bind_bot(c, container=args.container, database=args.database)
+        ui.message('Хост добавлен в ShopBot. Копия SQLite: ' + backup)
+        return 0
     if command == 'install':
         if (stack.root / 'state.json').exists():
             raise ValueError('Установка уже существует. Используйте resume или меню управления.')
@@ -217,12 +228,15 @@ def execute(args, stack):
         if not c.resources.get('squad'):
             if not sys.stdin.isatty():
                 raise ValueError('Укажите squad в меню bind-bot после регистрации ноды.')
-            c.resources['squad'] = ui.ask('UUID внутреннего squad существующей ноды')
+            import uuid
+            c.resources['squad'] = str(uuid.UUID(ui.ask('UUID внутреннего squad существующей ноды')))
             c.bot_token = ui.ask('API-токен для бота', secret=True)
             stack.api(c).get('/api/internal-squads/' + c.resources['squad'])
             stack.checkpoint(c)
         backup = bind_bot(c, container=args.container, database=args.database)
         ui.message('Хост добавлен в ShopBot. Копия SQLite: ' + backup)
+    elif command == 'export-bot':
+        print(export_connection(c, stack.root / 'shopbot-connection.json'))
     elif command == 'backup':
         if args.keep is not None and args.keep < 1:
             raise ValueError('--keep должен быть положительным числом.')

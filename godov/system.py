@@ -166,6 +166,7 @@ class Stack:
                 if not c.private_key or not c.public_key:
                     raise RuntimeError('Не удалось разобрать X25519. Проверьте версию Xray.')
                 self.checkpoint(c)
+            c.validate()
             if c.has_panel:
                 info = self.compose('ps', '-q', 'panel').stdout.strip()
                 networks = json.loads(run(['docker', 'inspect', info, '--format',

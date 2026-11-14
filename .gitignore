@@ -4,6 +4,7 @@ __pycache__/
 .env
 state.json
 credentials.txt
+*connection.json
 build/
 *.tar.gz
 *.db

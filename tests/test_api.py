@@ -3,13 +3,14 @@ import threading
 import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from godov.api import API, APIError, provision
+from godov.api import API, APIError, bootstrap_panel, provision
 from godov.config import Config
 
 
 class Handler(BaseHTTPRequestHandler):
     records = {}
     calls = []
+    headers_seen = []
 
     def log_message(self, *args):
         pass
@@ -22,6 +23,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         self.calls.append(('GET', self.path))
+        self.headers_seen.append((self.path, self.headers.get('X-Remnawave-Client-Type')))
         if self.path == '/api/redirect':
             self.send_response(302)
             self.send_header('Location', 'http://example.invalid/stolen')
@@ -29,7 +31,15 @@ class Handler(BaseHTTPRequestHandler):
             return
         if self.path == '/api/forbidden':
             return self.respond(403, {'message': 'sensitive-body-should-not-be-logged'})
-        if self.path == '/api/system/tools/x25519/generate':
+        if self.path == '/api/auth/status':
+            data = {'isRegisterAllowed': True}
+        elif self.path == '/api/tokens/scopes':
+            if self.headers.get('X-Remnawave-Client-Type') != 'browser':
+                return self.respond(403, {'message': 'admin client type required'})
+            groups = ['nodes', 'hosts', 'config-profiles', 'internal-squads', 'keygen', 'system',
+                      'users', 'subscriptions', 'external-squads', 'hwid-user-devices']
+            data = {'resources': [{'resource': name, 'endpoints': [{'key': name + ':read'}]} for name in groups]}
+        elif self.path == '/api/system/tools/x25519/generate':
             data = {'keypairs': [{'privateKey': 'private', 'publicKey': 'public'}]}
         elif self.path == '/api/keygen':
             data = {'secretKey': 'base64-secret'}
@@ -44,6 +54,10 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         self.calls.append(('POST', self.path))
         data = json.loads(self.rfile.read(int(self.headers['Content-Length'])))
+        if self.path == '/api/auth/register':
+            return self.respond(201, {'response': {'accessToken': 'admin-jwt'}})
+        if self.path == '/api/tokens':
+            return self.respond(201, {'response': {'token': data['name'] + '-issued-token'}})
         data['uuid'] = str(len(self.calls))
         if self.path == '/api/config-profiles':
             data['inbounds'] = [{'uuid': 'inbound-1', 'tag': 'G0D0V_VLESS_REALITY'}]
@@ -68,11 +82,22 @@ class APITests(unittest.TestCase):
     def setUp(self):
         Handler.records = {}
         Handler.calls = []
+        Handler.headers_seen = []
         self.api = API(self.url, 'secret-token', allow_local=True)
 
     def test_refuses_plain_http_remote_panels(self):
         with self.assertRaises(ValueError):
             API('http://remote.example.com', 'secret-token')
+
+    def test_admin_bootstrap_sets_required_client_header_only_for_token_issuance(self):
+        c = Config(mode='panel')
+        bootstrap_panel(self.api, c, lambda: None)
+        self.api.get('/api/nodes')
+        self.assertTrue(c.api_token)
+        self.assertTrue(c.bot_token)
+        scope_headers = [value for path, value in Handler.headers_seen if path == '/api/tokens/scopes']
+        self.assertEqual(scope_headers, ['browser', 'browser'])
+        self.assertEqual(Handler.headers_seen[-1], ('/api/nodes', None))
 
     def test_never_follows_redirects_with_a_bearer_token(self):
         with self.assertRaises(APIError) as error:

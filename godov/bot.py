@@ -3,9 +3,11 @@
 import inspect
 import json
 import re
+import uuid
 from pathlib import Path
 
 from .system import run
+from .config import Config, domain, panel_url, write_private
 
 
 def configure_database(db_path, payload):
@@ -54,6 +56,8 @@ def configure_database(db_path, payload):
 def bind_bot(c, *, container='remnawave-shopbot', database=None):
     if not c.resources.get('squad') or not c.panel_url or not (c.bot_token or c.api_token):
         raise ValueError('Для привязки нужны URL панели, API-токен и UUID работающего squad.')
+    panel_url(c.panel_url)
+    uuid.UUID(c.resources['squad'])
     payload = {'name': c.resource_name, 'url': c.panel_url, 'token': c.bot_token or c.api_token,
                'squad': c.resources['squad'],
                'subscription': 'https://' + c.sub_domain + '/api/sub' if c.sub_domain else None}
@@ -69,3 +73,27 @@ def bind_bot(c, *, container='remnawave-shopbot', database=None):
         return json.loads(output.strip().splitlines()[-1])['backup']
     except (ValueError, KeyError, IndexError):
         raise RuntimeError('Бот не подтвердил запись. Проверьте контейнер и совместимость схемы.') from None
+
+
+def export_connection(c, path):
+    if not c.resources.get('squad') or not (c.bot_token or c.api_token):
+        raise ValueError('Сначала создайте ноду и внутренний squad.')
+    payload = {'install_id': c.install_id, 'panel_url': c.panel_url,
+               'token': c.bot_token or c.api_token, 'squad': c.resources['squad'], 'sub_domain': c.sub_domain}
+    write_private(Path(path), json.dumps(payload, indent=2) + '\n')
+    return Path(path)
+
+
+def read_connection(path):
+    values = json.loads(Path(path).read_text(encoding='utf-8'))
+    if set(values) != {'install_id', 'panel_url', 'token', 'squad', 'sub_domain'}:
+        raise ValueError('Некорректный файл подключения ShopBot.')
+    if not re.fullmatch(r'[a-f0-9]{12}', values['install_id']):
+        raise ValueError('Некорректный ID подключения ShopBot.')
+    url = panel_url(values['panel_url'])
+    uuid.UUID(values['squad'])
+    if not isinstance(values['token'], str) or not values['token'] or any(ch in values['token'] for ch in '\r\n\x00'):
+        raise ValueError('Некорректный токен в файле подключения.')
+    sub = domain(values['sub_domain']) if values['sub_domain'] else ''
+    return Config(mode='panel', install_id=values['install_id'], panel_url=url, bot_token=values['token'],
+                  sub_domain=sub, resources={'squad': values['squad']})

@@ -24,6 +24,7 @@ class API:
     def __init__(self, url: str, token='', *, allow_local=False):
         self.url = panel_url(url, allow_local=allow_local)
         self.token = token
+        self.admin_session = False
         self.opener = urllib.request.build_opener(NoRedirect())
         self.local = self.url.startswith(('http://127.0.0.1:', 'http://localhost:'))
 
@@ -33,6 +34,8 @@ class API:
         headers = {'Accept': 'application/json', 'Content-Type': 'application/json', 'User-Agent': 'G0d0v/1.0'}
         if self.token:
             headers['Authorization'] = 'Bearer ' + self.token
+        if self.admin_session:
+            headers['X-Remnawave-Client-Type'] = 'browser'
         if self.local:
             headers.update({'X-Forwarded-Proto': 'https', 'X-Forwarded-For': '127.0.0.1'})
         body = json.dumps(payload).encode() if payload is not None else None
@@ -93,16 +96,20 @@ def bootstrap_panel(api: API, c: Config, checkpoint):
     credentials = {'username': c.admin_username, 'password': c.admin_password}
     endpoint = '/api/auth/register' if status['isRegisterAllowed'] else '/api/auth/login'
     api.token = api.post(endpoint, credentials)['accessToken']
-    if not c.api_token:
-        c.api_token = scoped_token(api, 'G0d0v Manager',
-                                   {'nodes', 'hosts', 'config-profiles', 'internal-squads', 'keygen', 'system'})
-        checkpoint()
-    if not c.bot_token:
-        c.bot_token = scoped_token(api, 'G0d0v ShopBot',
-                                   {'users', 'hosts', 'subscriptions', 'internal-squads',
-                                    'external-squads', 'hwid-user-devices'})
-        checkpoint()
-    api.token = c.api_token
+    api.admin_session = True
+    try:
+        if not c.api_token:
+            c.api_token = scoped_token(api, 'G0d0v Manager',
+                                       {'nodes', 'hosts', 'config-profiles', 'internal-squads', 'keygen', 'system'})
+            checkpoint()
+        if not c.bot_token:
+            c.bot_token = scoped_token(api, 'G0d0v ShopBot',
+                                       {'users', 'hosts', 'subscriptions', 'internal-squads',
+                                        'external-squads', 'hwid-user-devices'})
+            checkpoint()
+    finally:
+        api.admin_session = False
+        api.token = c.api_token
 
 
 def collection(api: API, path, key=None):
