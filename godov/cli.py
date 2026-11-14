@@ -15,7 +15,7 @@ from .bot import bind_bot, export_connection, read_connection
 from .api import API
 from .config import MODES, Config, load
 from .operations import (backup_and_prune, diagnostics, enable_bbr, reconfigure,
-                         schedule_backups, uninstall, update_stack)
+                         renew_tokens, schedule_backups, uninstall, update_stack)
 from .system import DEFAULT_ROOT, Stack, linux_root, protect_node
 
 
@@ -56,6 +56,7 @@ def parser():
     commands.add_parser('export-bot', help='сохранить файл подключения для удалённого ShopBot')
     credentials = commands.add_parser('credentials', help='путь к файлу доступов')
     credentials.add_argument('--show-secrets', action='store_true', help='показать пароль и токены в терминале')
+    commands.add_parser('tokens', help='перевыпустить API-токены локальной панели на 365 дней')
     logs = commands.add_parser('logs', help='логи выбранного сервиса')
     logs.add_argument('service', choices=('panel', 'node', 'caddy', 'db', 'redis'), nargs='?')
     logs.add_argument('--follow', '-f', action='store_true')
@@ -131,6 +132,9 @@ def maintenance_menu(stack):
             backup_choice = ui.ask('Действие', '1')
             args = {'1': ['backup'], '2': ['restore', ui.ask('Полный путь к архиву')] if backup_choice == '2' else [],
                     '3': ['backup-schedule']}.get(backup_choice)
+        elif choice == '10':
+            ui.item(1, 'Показать доступы'); ui.item(2, 'Перевыпустить токены панели и ShopBot')
+            args = ['tokens'] if ui.ask('Действие', '1') == '2' else ['credentials', '--show-secrets']
         elif choice == '11':
             action = ui.ask('start / stop / restart', 'restart')
             args = [action] if action in ('start', 'stop', 'restart') else None
@@ -222,6 +226,10 @@ def execute(args, stack):
         return 0 if results and all(ok for _, ok, _ in results) else 1
     elif command == 'credentials':
         print((stack.root / 'credentials.txt').read_text(encoding='utf-8') if args.show_secrets else stack.root / 'credentials.txt')
+    elif command == 'tokens':
+        password = ui.ask('Пароль администратора (Enter — сохранённый)', secret=True)
+        archive = renew_tokens(stack, password)
+        ui.message('Токены перевыпущены. Повторите bind-bot / export-bot. Копия: ' + str(archive))
     elif command in ('domains', 'selfsteal'):
         edit_domains(stack, c, selfsteal=command == 'selfsteal')
     elif command == 'bind-bot':
@@ -230,7 +238,7 @@ def execute(args, stack):
                 raise ValueError('Укажите squad в меню bind-bot после регистрации ноды.')
             import uuid
             c.resources['squad'] = str(uuid.UUID(ui.ask('UUID внутреннего squad существующей ноды')))
-            c.bot_token = ui.ask('API-токен для бота', secret=True)
+            c.bot_token = ui.ask('API-токен для бота (Enter — сохранить выданный)', c.bot_token, secret=True)
             stack.api(c).get('/api/internal-squads/' + c.resources['squad'])
             stack.checkpoint(c)
         backup = bind_bot(c, container=args.container, database=args.database)
@@ -296,7 +304,7 @@ def main(argv=None):
             return execute(args, stack)
         with lock():
             return execute(args, stack)
-    except (ValueError, RuntimeError, OSError, KeyError) as error:
+    except (ValueError, RuntimeError, OSError, KeyError, TypeError) as error:
         ui.message(str(error), error=True)
         return 1
     except (KeyboardInterrupt, EOFError):

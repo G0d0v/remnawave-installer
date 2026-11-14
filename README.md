@@ -16,7 +16,7 @@
 
 Для администратора Ubuntu/Debian: установщик разворачивает Remnawave, настраивает Reality и HTTPS, а затем подключает существующий [G0d0v ShopBot](https://github.com/G0d0v/remnawave-shopbot). Собственный бот, Telegram-токен и платёжные системы настраиваются в ShopBot.
 
-Подключитесь к серверу под `root`. Если используете обычного пользователя, сначала выполните `sudo -i`. Запустите:
+Перед запуском подготовьте Linux-сервер с systemd, свободные порты 80/443 и DNS-записи выбранных доменов; см. [требования](#подготовьте-сервер-и-dns). Подключитесь под `root`. Если используете обычного пользователя, сначала выполните `sudo -i`. Запустите:
 
 ```bash
 bash <(curl -fsSL https://raw.githubusercontent.com/G0d0v/remnawave-installer/v1.0.0/install.sh)
@@ -121,6 +121,7 @@ godov-remna bind-bot --container remnawave-shopbot
 | `godov-remna bbr` | Включить BBR, если ядро поддерживает |
 | `godov-remna firewall` | Повторно применить ограничение API ноды |
 | `godov-remna credentials --show-secrets` | Показать доступы |
+| `godov-remna tokens` | Перевыпустить токены локальной панели и бота |
 | `godov-remna uninstall` | Удалить контейнеры, сохранив volumes и резервную копию |
 
 Восстановление заменяет состояние текущей установки. Укажите путь к своей копии:

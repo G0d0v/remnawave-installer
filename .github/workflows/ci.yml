@@ -38,5 +38,7 @@ jobs:
       - uses: actions/checkout@v6
       - name: Validate all deployment templates
         run: python3 scripts/check_templates.py
+      - name: Exercise the root bootstrap with verified local release assets
+        run: sudo --preserve-env=GITHUB_ACTIONS python3 scripts/bootstrap_smoke.py
       - name: Install real stack and test VLESS traffic, resume and restore
         run: sudo --preserve-env=GITHUB_ACTIONS python3 -u scripts/linux_smoke.py

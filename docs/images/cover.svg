@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="440" viewBox="0 0 1280 440" role="img" aria-labelledby="title desc">
+<title id="title">G0d0v Remnawave Installer</title><desc id="desc">Установка панели, нод, selfsteal и подключение ShopBot одной командой.</desc>
+<rect width="1280" height="440" rx="22" fill="#111714"/>
+<g stroke="#26302a" stroke-width="1"><path d="M44 56H1236M44 384H1236"/><path d="M950 56V384M1080 56V384M1210 56V384"/><path d="M950 138H1210M950 220H1210M950 302H1210"/></g>
+<text x="64" y="101" fill="#93a297" font-family="monospace" font-size="15" letter-spacing="4">INFRASTRUCTURE, SIMPLIFIED</text>
+<text x="56" y="246" fill="#c9f46b" font-family="Arial,sans-serif" font-weight="700" font-size="148" letter-spacing="-10">G0d0v</text>
+<text x="65" y="303" fill="#eef1e9" font-family="Arial,sans-serif" font-size="33" letter-spacing="-1">Remnawave Installer</text>
+<text x="65" y="350" fill="#93a297" font-family="monospace" font-size="17">PANEL / NODE / SELFSTEAL / SHOPBOT</text>
+<rect x="977" y="163" width="206" height="115" rx="14" fill="#c9f46b"/>
+<text x="1002" y="216" fill="#162016" font-family="monospace" font-size="35" font-weight="700">$ deploy</text>
+<text x="1003" y="250" fill="#334b27" font-family="Arial,sans-serif" font-size="17">ONE COMMAND.</text>
+<circle cx="1205" cy="94" r="5" fill="#c9f46b"/>
+</svg>

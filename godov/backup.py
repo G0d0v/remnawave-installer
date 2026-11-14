@@ -3,6 +3,7 @@
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import tarfile
@@ -72,10 +73,10 @@ def unpack(archive: Path, destination: Path):
                 os.chmod(target, 0o600)
                 shutil.copyfileobj(source, output)
     manifest = json.loads((destination / 'manifest.json').read_text())
-    if set(manifest) != names - {'manifest.json'}:
+    if not isinstance(manifest, dict) or set(manifest) != names - {'manifest.json'}:
         raise ValueError('Список файлов архива не совпадает с manifest.json.')
     for name, digest in manifest.items():
-        if checksum(destination / name) != digest:
+        if not isinstance(digest, str) or not re.fullmatch(r'[a-f0-9]{64}', digest) or checksum(destination / name) != digest:
             raise ValueError('Контрольная сумма резервной копии не совпадает.')
 
 

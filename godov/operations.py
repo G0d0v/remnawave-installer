@@ -9,7 +9,7 @@ import socket
 import ssl
 from pathlib import Path
 
-from .api import node_ready, update_profile
+from .api import bootstrap_panel, node_ready, update_profile
 from .backup import apply_snapshot, backup_stack, unpack, validate_snapshot
 from .config import load, save, write_private
 from .render import render
@@ -148,6 +148,24 @@ def enable_bbr():
     write_private(Path('/etc/sysctl.d/90-godov-remna-bbr.conf'),
                   'net.core.default_qdisc=fq\nnet.ipv4.tcp_congestion_control=bbr\n', mode=0o644)
     run(['sysctl', '-p', '/etc/sysctl.d/90-godov-remna-bbr.conf'])
+
+
+def renew_tokens(stack: Stack, password):
+    original = load(stack.root).validate()
+    if not original.has_panel:
+        raise ValueError('Для удалённой панели перевыпустите токены в её интерфейсе и импортируйте подключение заново.')
+    candidate = copy.deepcopy(original)
+    candidate.admin_password = password or candidate.admin_password
+    candidate.api_token = candidate.bot_token = ''
+    archive = backup_stack(stack)
+    try:
+        bootstrap_panel(stack.api(candidate), candidate, lambda: save(stack.root, candidate))
+        save(stack.root, candidate)
+        stack.credentials(candidate)
+    except Exception:
+        save(stack.root, original)
+        raise
+    return archive
 
 
 def uninstall(stack: Stack, *, purge=False):

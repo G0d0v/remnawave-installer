@@ -152,7 +152,8 @@ class Stack:
         if c.has_panel:
             progress('Запускаю PostgreSQL, Valkey, панель и HTTPS…')
             self.compose('up', '-d', '--wait', '--wait-timeout', '300', 'db', 'redis', 'panel', 'caddy', timeout=360)
-            bootstrap_panel(self.api(c), c, lambda: self.checkpoint(c))
+            if not c.api_token or not c.bot_token:
+                bootstrap_panel(self.api(c), c, lambda: self.checkpoint(c))
         if c.has_node:
             if c.mode != 'node':
                 progress('Создаю профиль Reality, ноду, host и squad…')
@@ -234,7 +235,7 @@ def firewall_rules(c, family):
 
 def protect_node(c):
     for family, binary in ((4, 'iptables'), (6, 'ip6tables')):
-        if family == 6 and not Path('/proc/net/if_inet6').exists():
+        if family == 6 and (not Path('/proc/net/if_inet6').exists() or not Path('/proc/net/if_inet6').read_text().strip()):
             continue
         if not shutil.which(binary):
             raise RuntimeError(f'Не найден {binary}. Нода не запущена без защиты API.')
