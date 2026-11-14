@@ -41,6 +41,9 @@ class RenderTests(unittest.TestCase):
         self.assertNotIn('node', services)
         self.assertNotIn('https_port 8443', caddyfile(self.c))
 
+    def test_caddy_entrypoint_supports_maintenance_subcommands(self):
+        self.assertEqual(compose(self.c)['services']['caddy']['entrypoint'], ['caddy'])
+
     def test_external_reality_node_has_no_panel_or_caddy(self):
         self.c.mode = 'node'
         self.c.selfsteal = False

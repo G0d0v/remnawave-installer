@@ -62,7 +62,7 @@ class Handler(BaseHTTPRequestHandler):
             if data.get('forceRestart') is not True:
                 return self.respond(400, {'message': 'forceRestart is required'})
             self.records[self.path] = data
-            self.send_response(204)
+            self.send_response(202)
             self.end_headers()
             return
         data['uuid'] = str(len(self.calls))

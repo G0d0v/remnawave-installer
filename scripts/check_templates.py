@@ -23,8 +23,10 @@ def main():
             render(root, c)
             Stack(root).compose('config', '--quiet')
             if c.has_caddy:
-                run(['docker', 'run', '--rm', '-v', str(root / 'Caddyfile') + ':/etc/caddy/Caddyfile:ro',
-                     c.caddy_image, 'adapt', '--config', '/etc/caddy/Caddyfile'])
+                result = run(['docker', 'run', '--rm', '-v', str(root / 'Caddyfile') + ':/etc/caddy/Caddyfile:ro',
+                              c.caddy_image, 'caddy', 'adapt', '--config', '/etc/caddy/Caddyfile'], check=False)
+                if result.returncode:
+                    raise RuntimeError(result.stderr)
         print(f'PASS: Compose and Caddy parsers · {mode}, selfsteal={steal}', flush=True)
 
 

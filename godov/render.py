@@ -50,6 +50,8 @@ def compose(c: Config) -> dict:
     if c.has_caddy:
         services['caddy'] = {
             'image': c.caddy_image, 'restart': 'unless-stopped', 'network_mode': 'host',
+            'entrypoint': ['caddy'],
+            'command': ['run', '--config', '/etc/caddy/Caddyfile', '--adapter', 'caddyfile'],
             'volumes': ['./Caddyfile:/etc/caddy/Caddyfile:ro', './site:/srv:ro',
                         'caddy-data:/data', 'caddy-config:/config'],
             'cap_drop': ['ALL'], 'cap_add': ['NET_BIND_SERVICE'],

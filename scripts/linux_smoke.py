@@ -40,7 +40,7 @@ def main():
             user = api.post('/api/users', {
                 'username': 'godov_ci', 'status': 'ACTIVE', 'trafficLimitBytes': 0,
                 'trafficLimitStrategy': 'NO_RESET', 'activeInternalSquads': [c.resources['squad']],
-                'expireAt': (datetime.now(timezone.utc) + timedelta(days=1)).isoformat(),
+                'expireAt': (datetime.now(timezone.utc) + timedelta(days=1)).isoformat().replace('+00:00', 'Z'),
             })
             for secret in (c.admin_password, c.api_token, c.bot_token, c.node_secret, c.private_key):
                 print('::add-mask::' + secret, flush=True)
@@ -87,9 +87,22 @@ def main():
             restored = api.get('/api/users/' + str(user['id']))
             assert restored['status'] == 'ACTIVE', 'PostgreSQL state was not restored'
             print('PASS: real pg_dump/pg_restore and node reconnect', flush=True)
+    except Exception:
+        for secret in (c.admin_password, c.api_token, c.bot_token, c.node_secret, c.private_key,
+                       c.db_password, c.app_secret, c.metrics_password, c.webhook_secret):
+            if secret:
+                print('::add-mask::' + secret, flush=True)
+        if c.resources.get('node'):
+            try:
+                status = stack.api(c).get('/api/nodes/' + c.resources['node'])
+                print('Node diagnostic:', json.dumps({key: status.get(key) for key in
+                      ('isConnected', 'isConnecting', 'xrayUptime', 'lastStatusMessage')}), flush=True)
+            except Exception:
+                print('Node diagnostic unavailable', flush=True)
+        raise
     finally:
         # Error diagnostics contain no env files, dump files, credentials or raw API responses.
-        stack.compose('ps', '--all', check=False)
+        print(stack.compose('ps', '--all', check=False).stdout, flush=True)
         run(['docker', 'rm', '-f', 'godov-ci-client'], check=False)
         if (root / 'compose.yaml').exists():
             stack.compose('down', '--volumes', check=False)
