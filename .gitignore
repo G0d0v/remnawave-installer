@@ -1,0 +1,10 @@
+.dev/
+__pycache__/
+*.py[cod]
+.env
+state.json
+credentials.txt
+build/
+*.tar.gz
+*.db
+*.sqlite*
