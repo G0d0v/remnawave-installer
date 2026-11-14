@@ -2,7 +2,7 @@
 # G0d0v Remnawave Installer — verified release bootstrap.
 set -Eeuo pipefail
 
-VERSION='1.0.0'
+INSTALLER_VERSION='1.0.0'
 REPOSITORY='G0d0v/remnawave-installer'
 CLI_ROOT='/opt/godov-remnawave-cli'
 
@@ -10,11 +10,11 @@ fail() { printf '\n  G0d0v: %s\n\n' "$*" >&2; exit 1; }
 
 case "${1:-}" in
     --help|-h)
-        printf 'G0d0v Remnawave Installer %s\n' "$VERSION"
+        printf 'G0d0v Remnawave Installer %s\n' "$INSTALLER_VERSION"
         printf 'Usage: bash install.sh [--check | --version | CLI_ARGUMENTS]\n'
         printf 'Without arguments: install the verified CLI and open its menu.\n'
         exit 0 ;;
-    --version) printf '%s\n' "$VERSION"; exit 0 ;;
+    --version) printf '%s\n' "$INSTALLER_VERSION"; exit 0 ;;
 esac
 
 [[ "$(uname -s)" == 'Linux' ]] || fail 'Use an Ubuntu or Debian Linux server.'
@@ -52,9 +52,9 @@ mkdir -p "$CLI_ROOT/releases"
 stage="$(mktemp -d /tmp/godov-bootstrap.XXXXXXXX)"
 cleanup() { [[ -n "${stage:-}" && "$stage" == /tmp/godov-bootstrap.* ]] && rm -rf -- "$stage"; }
 trap cleanup EXIT
-package="godov-remnawave-v${VERSION}.tar.gz"
-base="https://github.com/${REPOSITORY}/releases/download/v${VERSION}"
-printf '\n  G0d0v · downloading verified release %s…\n\n' "$VERSION"
+package="godov-remnawave-v${INSTALLER_VERSION}.tar.gz"
+base="https://github.com/${REPOSITORY}/releases/download/v${INSTALLER_VERSION}"
+printf '\n  G0d0v · downloading verified release %s…\n\n' "$INSTALLER_VERSION"
 curl --fail --silent --show-error --location --retry 3 --proto '=https' --tlsv1.2 "$base/$package" -o "$stage/$package"
 curl --fail --silent --show-error --location --retry 3 --proto '=https' --tlsv1.2 "$base/SHA256SUMS" -o "$stage/SHA256SUMS"
 
@@ -95,15 +95,15 @@ with tarfile.open(stage / package, 'r:gz') as archive:
             shutil.copyfileobj(source, output)
 PY
 
-target="$CLI_ROOT/releases/$VERSION"
-[[ "$(cat "$stage/code/VERSION")" == "$VERSION" ]] || fail 'Archive version does not match the bootstrap.'
+target="$CLI_ROOT/releases/$INSTALLER_VERSION"
+[[ "$(cat "$stage/code/VERSION")" == "$INSTALLER_VERSION" ]] || fail 'Archive version does not match the bootstrap.'
 [[ ! -L "$target" ]] || fail 'Release directory must not be a symlink.'
 if [[ ! -e "$target" ]]; then
     mv -- "$stage/code" "$target"
-elif [[ ! -f "$target/VERSION" || "$(cat "$target/VERSION")" != "$VERSION" ]]; then
+elif [[ ! -f "$target/VERSION" || "$(cat "$target/VERSION")" != "$INSTALLER_VERSION" ]]; then
     fail 'Existing release directory has an unexpected version.'
 fi
-ln -sfnT "releases/$VERSION" "$CLI_ROOT/current"
+ln -sfnT "releases/$INSTALLER_VERSION" "$CLI_ROOT/current"
 launcher="$(mktemp /usr/local/bin/.godov-remna.XXXXXXXX)"
 cat > "$launcher" <<'SH'
 #!/usr/bin/env bash
